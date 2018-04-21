@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+    <context:annotation-config/>
+    <context:component-scan base-package="com.jhs.*" />
+    <!-- 事务管理******************************************************************************************** -->
+        <tx:annotation-driven transaction-manager="txManager"/>
+        <bean id="txManager"
+              class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+            <property name="sessionFactory" ref="sessionFactory" />
+        </bean>
+        <!-- 配置事务特性，配置add，delete，update开始的方法，事务传播特性为required -->
+        <tx:advice id="txAdvice" transaction-manager="txManager">
+            <tx:attributes>
+                <!-- REQUIRED 表示 如果存在一个事务，则支持当前事务。如果没有事务则开启 -->
+                <tx:method name="add*" propagation="REQUIRED" />
+                <tx:method name="delete*" propagation="REQUIRED" />
+                <tx:method name="update*" propagation="REQUIRED" />
+                <tx:method name="*" read-only="true" />
+            </tx:attributes>
+        </tx:advice>
+        <!-- -->
+        <!-- 配置那些类的方法进行事务管理，当前com.jhs包中的子包， 类中所有方法需要，还需要参考tx:advice的设置 -->
+        <aop:config>
+            <aop:pointcut id="allManagerMethod"
+                          expression="execution(* com.jhs.*.*(..))" />
+            <aop:advisor advice-ref="txAdvice" pointcut-ref="allManagerMethod" />
+        </aop:config>
+    <!-- -->
+    <!-- 配置数据源 -->
+    <context:property-placeholder location="classpath:mysql.properties"/>
+    <!-- 配置DataSource -->
+    <bean class="com.mchange.v2.c3p0.ComboPooledDataSource" id="dataSource">
+        <property name="user" value="${jdbc.user}"></property>
+        <property name="password" value="${jdbc.password}"></property>
+        <property name="driverClass" value="${jdbc.driverClass}"></property>
+        <property name="jdbcUrl" value="${jdbc.jdbcUrl}"></property>
+        <!--   初始化建立的连接数 -->
+        <property name="initialPoolSize" value="${jdbc.initialPoolSize}"/>
+        <!--         最大空闲时间，120秒内未被使用的连接将被丢弃 -->
+        <property name="maxIdleTime" value="${jdbc.maxIdleTime}"/>
+        <!--     当连接池耗尽，且未达到最大连接数时，一次获取的连接数 -->
+        <property name="acquireIncrement" value="${jdbc.acquireIncrement}"/>
+        <!--     空闲检查时间间隔， 每隔120秒检查连接池里的空闲连接 ，单位是秒 -->
+        <property name="idleConnectionTestPeriod" value="${jdbc.idleConnectionTestPeriod}"/>
+    </bean>
+    <!-- 配置sessionFactory -->
+    <bean  class="org.springframework.orm.hibernate5.LocalSessionFactoryBean" id="sessionFactory">
+        <property name="dataSource" ref="dataSource"></property>
+        <!--<property name="annotatedClasses">-->
+            <!--<list>-->
+                <!--<value>com.jhs.model.User</value>-->
+            <!--</list>-->
+        <!--</property>-->
+        <property name="packagesToScan" >
+            <list>
+                <value>com.jhs.model</value>
+            </list>
+        </property>
+        <property name="hibernateProperties">
+            <props>
+                <!-- MySQL的方言 -->
+                <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+                <prop key="javax.persistence.validation.mode">${javax.persistence.validation.mode}</prop>
+                <!-- 必要时在数据库新建所有表格 -->
+                <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+                <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+                <!-- 配置current session的上下文环境，方便我们调用sessionFactory获取当前线程统一个session对象 -->
+                <prop key="current_session_context_class">${current_session_context_class}</prop>
+                <!-- 用更漂亮的格式显示sql语句-->
+                 <prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+                <!-- 自动提交事务 -->
+                <prop key="hibernate.connection.autocommit">${hibernate.connection.autocommit}</prop>
+            </props>
+        </property>
+    </bean>
+    <!-- 创建hibernateTemplate********************************************************************************** -->
+    <bean id="hibernateTemplate" class="org.springframework.orm.hibernate5.HibernateTemplate">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+</beans>
